@@ -66,7 +66,7 @@ for AREA in "${AREAS[@]}"; do
     -v gis-services-processing:/data \
     --name "gis-services-download-$AREA" \
     ghcr.io/onthegomap/planetiler:latest \
-    --only-download --area=$AREA --force \
+    --only-download --area=$AREA --force --fetch-wikidata \
   || exit_with_error "Error downloading .osm.pbf of $AREA.  Aborting."
 done
 
@@ -76,16 +76,17 @@ docker run -d -t \
   -v gis-services-maptiler:/maptiler \
   -v gis-services-nominatim-data:/nominatim-data \
   -v gis-services-valhalla:/valhalla \
-  --name gis-services-debian \
-  debian:stable
-docker cp "$PWD/scripts" gis-services-debian:/processing
+  --name gis-services-ubuntu \
+  ubuntu:22.04
+docker exec -it gis-services-ubuntu bash -c 'apt update -y && apt install osmium-tool -y'
+docker cp "$PWD/scripts" gis-services-ubuntu:/processing
 
 # Merge .osm.pbf files with osmium in debian container
-docker exec -t gis-services-debian bash /processing/scripts/merge-osm-files.sh "$MERGED_AREAS"
+docker exec -t gis-services-ubuntu bash /processing/scripts/merge-osm-files.sh "$MERGED_AREAS"
 
 # Run prepare scripts to prepare processing
-docker exec -t gis-services-debian bash /processing/scripts/prepare-valhalla-processing.sh "$MERGED_AREAS"
-docker exec -t gis-services-debian bash /processing/scripts/prepare-nominatim-processing.sh "$MERGED_AREAS"
+docker exec -t gis-services-ubuntu bash /processing/scripts/prepare-valhalla-processing.sh "$MERGED_AREAS"
+docker exec -t gis-services-ubuntu bash /processing/scripts/prepare-nominatim-processing.sh "$MERGED_AREAS"
 
 # Valhalla processing - Build routing tiles
 docker run --rm \
@@ -125,7 +126,7 @@ done
 docker stop gis-services-nominatim-prepdb && docker rm gis-services-nominatim-prepdb
 
 # Clean up processing folders
-docker exec -t gis-services-debian bash /processing/scripts/cleanup-valhalla-processing.sh "$MERGED_AREAS"
+docker exec -t gis-services-ubuntu bash /processing/scripts/cleanup-valhalla-processing.sh "$MERGED_AREAS"
 
 # # Prepare images, take services down, update .env and nginx.conf, restart services
 # cd $PWD
@@ -133,7 +134,7 @@ docker exec -t gis-services-debian bash /processing/scripts/cleanup-valhalla-pro
 # docker compose down
 
 # # Stopping and removing managing debian container and deleting processing volume
-docker container stop "gis-services-debian" && docker container rm "gis-services-debian" && docker volume rm gis-services-processing
+docker container stop "gis-services-ubuntu" && docker container rm "gis-services-ubuntu" && docker volume rm gis-services-processing
 
 # # Delete old volumes of services
 # echo Deleting old gis-services... volumes
