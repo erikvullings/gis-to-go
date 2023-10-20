@@ -28,5 +28,22 @@ It runs the following services:
 
 - NGINGX as a reverse proxy
 - [MapTiler to serve maps](http://localhost/maptiler)
-- [Valhalla UI](http://localhost/valhalla)
+- [Valhalla API](http://localhost/valhalla), e.g. test
+
+```bash
+curl -s -XPOST 'http://localhost/valhalla/route' -H 'Content-Type: application/json' --data-raw '{
+    "locations": [
+        {
+            "lat": 43.75015478650435,
+            "lon": 7.438245208691164
+        },
+        {
+            "lat": 43.739998742831155,
+            "lon": 7.42614130733486
+        }
+    ],
+    "costing": "auto"
+}'
+```
+
 - [NOMINATIM API](http://localhost/nominatim), e.g. test `curl http://localhost/nominatim/search?q=Monaco&format=json&addressdetails=1&limit=1&polygon_svg=1` if the Monaco database is loaded.
