@@ -4,6 +4,6 @@
 MERGED_AREAS="$1"
 
 echo "cleanup-valhalla-processing script has started"
-source /processing/scripts/set-environment.sh
+echo "Removing $MERGED_AREAS.osm.pbf";
 rm /valhalla/$MERGED_AREAS.osm.pbf
 echo "cleanup-valhalla-processing script has finished"

@@ -1,115 +1,44 @@
 services:
-  # nginx:
-  #   container_name: gis-services-nginx
-  #   image: nginx:latest
-  #   ports:
-  #     - "${DOCKERPORT}:80"
-  #   volumes:
-  #     - ./local-conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-
-  reverse_proxy:
-    container_name: traefik
-    image: traefik:latest
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      # - "--providers.docker.exposedbydefault=false"
-      # - "--entrypoints.web.address=:80"
-      # - "--entrypoints.websecure.address=:443"
-      # - "--certificatesresolvers.certresolver.acme.tlschallenge=true"
-      # - "--certificatesresolvers.certresolver.acme.email=YOUR_EMAIL"
-      # - "--certificatesresolvers.certresolver.acme.storage=/letsencrypt/acme.json"
-      # - "--log.level=INFO"
+  nginx:
+    container_name: gis-services-nginx
+    image: nginx:stable
     ports:
-      # The HTTP port
-      - "80:80"
-      # The Web UI (enabled by --api.insecure=true)
-      - "8080:8080"
-      # - "443:443"
+      - "${DOCKERPORT}:80"
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      # - ./letsencrypt:/letsencrypt
-    # labels:
-    #   - "traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)"
-    #   - "traefik.http.routers.http-catchall.entrypoints=web"
-    # - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
-    # - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - ./local-conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 
-  whoami:
-    # A container that exposes an API to show its IP address
-    image: traefik/whoami
-    labels:
-      - "traefik.http.routers.whoami.rule=Host(`whoami.docker.localhost`)"
-
-  # valhalla:
-  #   container_name: gis-services-valhalla
-  #   image: ghcr.io/gis-ops/docker-valhalla/valhalla:latest
-  #   ports:
-  #     - 8001:8002
-  #   volumes:
-  #     - gis-services-valhalla:/custom_files
-  #     - gis-services-maptiler:/data
-  #   environment:
-  #     - use_tiles_ignore_pbf=True
-  #     - build_elevation=False
-  #     - build_admins=False
-  #     - build_time_zones=False
-  #     - build_tar=True
-  #     - force_rebuild=False
-  #   labels:
-  #     - "traefik.enable=true"
-  #     - "traefik.http.services.valhalla.loadbalancer.server.port=8002"
-  #     - "traefik.http.routers.valhalla.rule=Host(`${DOCKERPROTOCOL}${DOCKERDOMAIN}`) && PathPrefix(`/valhalla{regex:$$|/.*}`)"
-  #     - "traefik.http.routers.valhalla.service=valhalla"
-  #     # - "traefik.http.routers.valhalla.entrypoints=websecure"
-  #     # - "traefik.http.routers.valhalla.tls.certresolver=certresolver"
-  #     - "traefik.http.routers.valhalla.middlewares=valhalla-stripprefix"
-  #     - "traefik.http.middlewares.valhalla-stripprefix.stripprefix.prefixes=/valhalla"
+  valhalla:
+    container_name: gis-services-valhalla
+    image: gisops/valhalla:${VALHALLA_VERSION}
+    volumes:
+      - gis-services-valhalla:/custom_files
+    environment:
+      - use_tiles_ignore_pbf=True
+      - build_elevation=False
+      - build_admins=False
+      - build_time_zones=False
+      - build_tar=False
+      - force_rebuild=False
 
   maptiler:
     container_name: gis-services-maptiler
-    image: maptiler/tileserver-gl:v4.6.1
-    ports:
-      - 8010:8080
+    image: maptiler/tileserver-gl:${MAPTILER_VERSION}
     volumes:
       - gis-services-maptiler:/data
-    # command:
-    #   - "-u ${DOCKERPROTOCOL}${DOCKERDOMAIN}:${DOCKERPORT}/maptiler"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.services.maptiler.loadbalancer.server.port=8080"
-      - "traefik.http.routers.maptiler.rule=Host(`localhost`) && PathPrefix(`/maptiler`)"
-      - "traefik.http.routers.maptiler.middlewares=maptiler-stripprefix"
-      - "traefik.http.middlewares.maptiler-stripprefix.stripprefix.prefixes=/maptiler"
-      - "traefik.http.middlewares.maptiler-stripprefix.stripprefix.forceSlash=false"
-    # - "traefik.http.routers.maptiler.rule=Host(`maptiler.docker.localhost`)"
-    # - "traefik.http.routers.maptiler.rule=Host(`${DOCKERPROTOCOL}${DOCKERDOMAIN}:${DOCKERPORT}`) && PathPrefix(`/maptiler{regex:$$|/.*}`)"
-    # - "traefik.http.routers.maptiler.rule=Host(`localhost`) && PathPrefix(`/maptiler{regex:$$|/.*}`)"
-    # - "traefik.http.routers.maptiler.service=maptiler"
-    # - "traefik.http.routers.maptiler.entrypoints=websecure"
-    # - "traefik.http.routers.maptiler.tls.certresolver=certresolver"
-    # - "traefik.http.middlewares.maptiler-stripprefix.stripprefix.forceSlash=false"
+    command:
+      - "-u ${DOCKERPROTOCOL}${DOCKERDOMAIN}:${DOCKERPORT}/maptiler"
 
-  # nominatim:
-  #   container_name: gis-services-nominatim
-  #   image: mediagis/nominatim:4.0
-  #   ports:
-  #     - 8003:8080
-  #   volumes:
-  #     - gis-services-nominatim-data:/nominatim/data/
-  #     - gis-services-nominatim-postgress:/var/lib/postgresql/12/main
-  #   environment:
-  #     - PBF_PATH=/nominatim/data/merged_data.osm.pbf
-  #     - FREEZE=true
-  #   labels:
-  #     - "traefik.enable=true"
-  #     - "traefik.http.services.nominatim.loadbalancer.server.port=8080"
-  #     - "traefik.http.routers.nominatim.rule=Host(`${DOCKERPROTOCOL}${DOCKERDOMAIN}`) && PathPrefix(`/nominatim{regex:$$|/.*}`)"
-  #     - "traefik.http.routers.nominatim.service=nominatim"
-  #     # - "traefik.http.routers.nominatim.entrypoints=websecure"
-  #     # - "traefik.http.routers.nominatim.tls.certresolver=certresolver"
-  #     - "traefik.http.routers.nominatim.middlewares=nominatim-stripprefix"
-  #     - "traefik.http.middlewares.nominatim-stripprefix.stripprefix.prefixes=/nominatim"
+  # https://github.com/mediagis/nominatim-docker/tree/master/4.3
+  # Test http://localhost/nominatim/search?q=Monaco&format=json&addressdetails=1&limit=1&polygon_svg=1
+  nominatim:
+    container_name: gis-services-nominatim
+    image: mediagis/nominatim:${NOMINATIM_VERSION}
+    volumes:
+      - gis-services-nominatim-data:/nominatim/data/
+      - gis-services-nominatim-postgress:/var/lib/postgresql/12/main
+    environment:
+      - PBF_PATH=/nominatim/data/merged_areas.osm.pbf
+      - FREEZE=true
 
 volumes:
   gis-services-valhalla:

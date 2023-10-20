@@ -89,27 +89,37 @@ docker exec -t gis-services-ubuntu bash /processing/scripts/prepare-valhalla-pro
 docker exec -t gis-services-ubuntu bash /processing/scripts/prepare-nominatim-processing.sh "$MERGED_AREAS"
 
 # Valhalla processing - Build routing tiles
-docker run --rm \
-  -v gis-services-valhalla:/custom_files \
-  -e build_elevation=True \
-  -e build_admins=True \
-  -e build_time_zones=True \
-  -e serve_tiles=False \
-  --name "gis-services-valhalla-prep" \
-  ghcr.io/gis-ops/docker-valhalla/valhalla:latest \
-  || exit_with_error "Error during Valhalla processing.  Aborting."
+# echo "========================="
+# echo "== VALHALLA processing =="
+# echo "========================="
+# docker run --rm \
+#   -v gis-services-valhalla:/custom_files \
+#   -e build_elevation=True \
+#   -e build_admins=True \
+#   -e build_time_zones=True \
+#   -e serve_tiles=False \
+#   -e traffic_name="" \
+#   --name "gis-services-valhalla-prep" \
+#   ghcr.io/gis-ops/docker-valhalla/valhalla:$VALHALLA_VERSION \
+#   || exit_with_error "Error during Valhalla processing.  Aborting."
 
-# Maptiler processing - Build vector tiles
-docker run --rm \
-  -e JAVA_TOOL_OPTIONS="-Xmx1g" \
-  -v gis-services-processing:/data \
-  -v gis-services-maptiler:/maptiler \
-  --name "gis-services-generating-vector-tiles" \
-  ghcr.io/onthegomap/planetiler:latest \
-  --osm-path=/data/$MERGED_AREAS.osm.pbf --force --output=/maptiler/output.mbtiles \
-  || exit_with_error "Error generating vector tiles.  Aborting."
+# # Maptiler processing - Build vector tiles
+# echo "========================="
+# echo "== MAPTILER processing =="
+# echo "========================="
+# docker run --rm \
+#   -e JAVA_TOOL_OPTIONS="-Xmx1g" \
+#   -v gis-services-processing:/data \
+#   -v gis-services-maptiler:/maptiler \
+#   --name "gis-services-generating-vector-tiles" \
+#   ghcr.io/onthegomap/planetiler:latest \
+#   --osm-path=/data/$MERGED_AREAS.osm.pbf --force --output=/maptiler/output.mbtiles \
+#   || exit_with_error "Error generating vector tiles.  Aborting."
 
 # Populate nominatim db
+echo "=========================="
+echo "== NOMINATIM processing =="
+echo "=========================="
 docker run -d -t --shm-size=1g \
   -e PBF_PATH=/nominatim/data/$MERGED_AREAS.osm.pbf \
   -e IMPORT_WIKIPEDIA=false \
@@ -117,8 +127,8 @@ docker run -d -t --shm-size=1g \
   -v gis-services-nominatim-data:/nominatim/data/ \
   -v gis-services-nominatim-postgress:/var/lib/postgresql/12/main \
   --name "gis-services-nominatim-prepdb" \
-  mediagis/nominatim:4.0
-while [ "$(docker logs gis-services-nominatim-prepdb --tail 5 | grep -c "database system is ready to accept connections")" -eq 0 ]; do
+  mediagis/nominatim:$NOMINATIM_VERSION
+while [ "$(docker logs gis-services-nominatim-prepdb --tail 5 | grep -c "Nominatim is ready to accept requests")" -eq 0 ]; do
     echo "Populating Nominatim database..."
     sleep 2
 done
